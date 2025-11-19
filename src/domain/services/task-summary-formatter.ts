@@ -59,6 +59,8 @@ export class TaskSummaryFormatter {
       lines.push(`• *${label}:* ${sanitized}`)
     }
 
+    pushField('Ambiente', toText(summary.identifier))
+
     const totalTime = toText(summary.totalTime) || formatDurationHMS(summary.totalTimeMs) || '00:00:00'
     pushField('Tempo total', totalTime)
 

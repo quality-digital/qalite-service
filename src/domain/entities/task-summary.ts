@@ -4,6 +4,7 @@ export interface EnvironmentSummaryAttendee {
 }
 
 export interface EnvironmentSummaryPayload {
+  identifier?: string
   totalTime?: string
   totalTimeMs?: number
   scenariosCount?: number

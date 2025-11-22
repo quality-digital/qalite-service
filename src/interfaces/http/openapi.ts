@@ -3,10 +3,10 @@ import { config } from '../../config.js'
 export const openApiDocument = {
   openapi: '3.0.3',
   info: {
-    title: 'QA Manager Proxy API',
-    version: '2.0.0',
+    title: 'QaLite-Servidor API',
+    version: '2.1.0',
     description:
-      'API minimalista que recebe resumos de execução de QA e os encaminha para o webhook do Slack informado na requisição.',
+      'API minimalista que recebe resumos de execução de QA e notificações de automação para o QaLite-Servidor.',
   },
   servers: [
     {
@@ -89,6 +89,71 @@ export const openApiDocument = {
         },
       },
     },
+    '/automations/executions': {
+      post: {
+        summary: 'Registrar execução de automação',
+        description:
+          'Recebe uma execução de automação (por exemplo, disparada pelo QaLite-Servidor) e armazena em memória para consulta posterior.',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/AutomationExecutionPayload' },
+              example: {
+                username: 'browser-user',
+                password: 'superSecret!',
+                status: 'queued',
+                provider: 'qalite-servidor',
+                executionId: 'bt-123',
+                startedAt: '2024-02-10T10:00:00Z',
+                finishedAt: '2024-02-10T10:05:00Z',
+                details: { browser: 'chrome', os: 'windows' },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: 'Execução registrada com sucesso.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    message: { type: 'string', example: 'Execução de automação registrada.' },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: 'Username e password ausentes ou inválidos.',
+          },
+        },
+      },
+      get: {
+        summary: 'Listar execuções de automação recebidas',
+        description: 'Retorna todas as execuções armazenadas em memória no serviço.',
+        responses: {
+          200: {
+            description: 'Lista de execuções.',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    executions: {
+                      type: 'array',
+                      items: { $ref: '#/components/schemas/AutomationExecution' },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -164,6 +229,45 @@ export const openApiDocument = {
           name: { type: 'string' },
           email: { type: 'string', format: 'email' },
         },
+      },
+      AutomationExecutionPayload: {
+        type: 'object',
+        required: ['username', 'password'],
+        properties: {
+          username: { type: 'string', description: 'Usuário usado na execução automatizada.' },
+          password: { type: 'string', description: 'Senha usada na execução automatizada.' },
+          status: { type: 'string', description: 'Estado atual da execução.', example: 'queued' },
+            provider: { type: 'string', description: 'Origem do disparo da automação.', example: 'qalite-servidor' },
+          executionId: { type: 'string', description: 'Identificador externo da execução.' },
+          startedAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Data e hora do início da execução.',
+          },
+          finishedAt: {
+            type: 'string',
+            format: 'date-time',
+            description: 'Data e hora da finalização da execução.',
+          },
+          details: {
+            type: 'object',
+            additionalProperties: true,
+            description: 'Metadados livres enviados pelo QaLite-Servidor.',
+          },
+        },
+      },
+      AutomationExecution: {
+        allOf: [
+          { $ref: '#/components/schemas/AutomationExecutionPayload' },
+          {
+            type: 'object',
+            required: ['id', 'receivedAt'],
+            properties: {
+              id: { type: 'string', format: 'uuid' },
+              receivedAt: { type: 'string', format: 'date-time' },
+            },
+          },
+        ],
       },
     },
   },

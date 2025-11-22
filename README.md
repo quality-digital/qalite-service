@@ -1,17 +1,19 @@
-# QA Manager Proxy API
+# QaLite-Servidor API
 
-Servidor HTTP minimalista escrito em TypeScript que encaminha resumos de QA para um webhook do Slack informado pelo frontend. O projeto segue uma estrutura enxuta em camadas (configuração, aplicação, domínio, infraestrutura e interfaces) para manter a separação de responsabilidades sem frameworks externos.
+Servidor HTTP minimalista escrito em TypeScript que encaminha resumos de QA e execuções de automação para o ecossistema QaLite-Servidor. O serviço mantém uma estrutura enxuta em camadas (configuração, aplicação, domínio, infraestrutura e interfaces) para preservar a separação de responsabilidades sem frameworks externos.
 
 ## Endpoints
 
-| Método | Rota                  | Descrição                                                   |
-| ------ | --------------------- | ----------------------------------------------------------- |
-| `GET`  | `/health`             | Verificação rápida de disponibilidade.                      |
-| `GET`  | `/openapi.json`       | Documento OpenAPI 3.0 usado pelo Swagger UI.                |
-| `GET`  | `/docs`               | Interface do Swagger UI servida via CDN.                    |
-| `POST` | `/slack/task-summary` | Recebe um resumo de QA e repassa para o webhook informado no payload. |
+| Método | Rota                        | Descrição                                                                 |
+| ------ | --------------------------- | ------------------------------------------------------------------------- |
+| `GET`  | `/health`                   | Verificação rápida de disponibilidade.                                    |
+| `GET`  | `/openapi.json`             | Documento OpenAPI 3.0 usado pelo Swagger UI.                              |
+| `GET`  | `/docs`                     | Interface do Swagger UI servida via CDN.                                  |
+| `POST` | `/slack/task-summary`       | Recebe um resumo de QA e repassa para o webhook informado no payload.     |
+| `POST` | `/automations/executions`   | Registra uma execução de automação vinda do QaLite-Servidor.             |
+| `GET`  | `/automations/executions`   | Lista as execuções de automação recebidas em memória.                     |
 
-> Caso não precise da interface visual, consuma diretamente a especificação em `/openapi.json`.
+> Caso não precise da interface visual, consuma diretamente a especificação em `/openapi.json`. A coleção Postman `postman_collection.json` traz exemplos prontos para todos os endpoints.
 
 ## Variáveis de ambiente
 

@@ -1,7 +1,7 @@
 {
-  "name": "qalite-server",
+  "name": "qalite-servidor",
   "version": "1.0.0",
-  "description": "Proxy services",
+  "description": "Proxy HTTP do QaLite-Servidor",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

@@ -1,31 +1,16 @@
-name: Auto Release
+name: Release Pipeline
 
 on:
-  push:
-    branches: [main]
-
-permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  release:
+    types: [created, published]
 
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Allow Husky bypass for semantic-release
-        run: echo "SEMANTIC_RELEASE=true" >> $GITHUB_ENV
-
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-
+          node-version: 20
       - run: npm ci
-
-      - name: Run semantic-release
-        run: npx semantic-release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm run build

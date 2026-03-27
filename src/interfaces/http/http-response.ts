@@ -5,4 +5,3 @@ export const json = (res: ServerResponse, statusCode: number, payload: unknown):
   res.setHeader('Content-Type', 'application/json')
   res.end(JSON.stringify(payload))
 }
-

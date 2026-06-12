@@ -5,13 +5,16 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.json",
+    "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "npm run clean && tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "dev": "tsc -w -p tsconfig.json",
     "lint": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test",
+    "pretest": "npm run build",
     "format": "prettier --write .",
-    "check": "npm run lint && npm run typecheck && npm run build",
+    "check": "npm run lint && npm run typecheck && npm test",
     "prepare": "husky"
   },
   "lint-staged": {

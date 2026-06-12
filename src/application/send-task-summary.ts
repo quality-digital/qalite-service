@@ -1,6 +1,13 @@
-import { HttpError } from '../../errors.js'
-import type { TaskSummaryPayload } from '../../domain/entities/task-summary.js'
-import type { SlackNotifier } from '../ports/slack-notifier.js'
+import { HttpError } from '../errors.js'
+
+export interface TaskSummaryPayload {
+  message?: string
+  webhookUrl?: string | null
+}
+
+export interface SlackNotifier {
+  sendMessage(message: string, webhookUrl?: string | null): Promise<void>
+}
 
 export class SendTaskSummaryUseCase {
   constructor(private readonly notifier: SlackNotifier) {}

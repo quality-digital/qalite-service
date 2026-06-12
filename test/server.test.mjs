@@ -55,30 +55,37 @@ const sendRequest = ({ method = 'GET', path = '/', headers = {}, body } = {}) =>
     req.end()
   })
 
-test('sends a trimmed task summary to the provided Slack webhook', async () => {
+test('sends a normalized task summary through the Slack integration', async () => {
   const response = await sendRequest({
     method: 'POST',
     path: '/slack/task-summary',
     headers: {
       'content-type': 'application/json',
       origin: 'http://localhost:5173',
+      'x-request-id': 'qa-run-123',
     },
     body: JSON.stringify({
       message: '  Execution completed.  ',
-      webhookUrl: '  https://hooks.slack.test/services/example  ',
+      webhookUrl: '  https://hooks.slack.com/services/example  ',
     }),
   })
 
   assert.equal(response.statusCode, 200)
   assert.equal(response.headers['access-control-allow-origin'], 'http://localhost:5173')
+  assert.equal(response.headers.vary, 'Origin')
+  assert.equal(response.headers['x-request-id'], 'qa-run-123')
   assert.deepEqual(response.body, { message: 'Slack task summary sent.' })
   assert.equal(slackRequests.length, 1)
-  assert.equal(slackRequests[0].url, 'https://hooks.slack.test/services/example')
-  assert.deepEqual(slackRequests[0].options, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text: 'Execution completed.' }),
+  assert.equal(slackRequests[0].url, 'https://hooks.slack.com/services/example')
+  assert.equal(slackRequests[0].options.method, 'POST')
+  assert.deepEqual(slackRequests[0].options.headers, {
+    'Content-Type': 'application/json',
   })
+  assert.equal(
+    slackRequests[0].options.body,
+    JSON.stringify({ text: 'Execution completed.' }),
+  )
+  assert(slackRequests[0].options.signal instanceof AbortSignal)
 })
 
 test('rejects malformed JSON without calling Slack', async () => {
@@ -94,12 +101,14 @@ test('rejects malformed JSON without calling Slack', async () => {
   assert.equal(slackRequests.length, 0)
 })
 
-test('rejects missing messages and webhook URLs', async (t) => {
+test('validates the task summary contract before running the service', async (t) => {
   await t.test('missing message', async () => {
     const response = await sendRequest({
       method: 'POST',
       path: '/slack/task-summary',
-      body: JSON.stringify({ webhookUrl: 'https://hooks.slack.test/services/example' }),
+      body: JSON.stringify({
+        webhookUrl: 'https://hooks.slack.com/services/example',
+      }),
     })
 
     assert.equal(response.statusCode, 400)
@@ -117,10 +126,42 @@ test('rejects missing messages and webhook URLs', async (t) => {
     assert.deepEqual(response.body, { error: 'Webhook URL is required.' })
   })
 
+  await t.test('non-Slack webhook URL', async () => {
+    const response = await sendRequest({
+      method: 'POST',
+      path: '/slack/task-summary',
+      body: JSON.stringify({
+        message: 'Execution completed.',
+        webhookUrl: 'https://untrusted.example/services/example',
+      }),
+    })
+
+    assert.equal(response.statusCode, 400)
+    assert.deepEqual(response.body, {
+      error: 'Webhook URL must be a valid Slack HTTPS URL.',
+    })
+  })
+
   assert.equal(slackRequests.length, 0)
 })
 
-test('preserves CORS and routing error responses', async (t) => {
+test('maps Slack failures to a stable gateway error', async () => {
+  globalThis.fetch = async () => new Response('unavailable', { status: 503 })
+
+  const response = await sendRequest({
+    method: 'POST',
+    path: '/slack/task-summary',
+    body: JSON.stringify({
+      message: 'Execution completed.',
+      webhookUrl: 'https://hooks.slack.com/services/example',
+    }),
+  })
+
+  assert.equal(response.statusCode, 502)
+  assert.deepEqual(response.body, { error: 'Unable to deliver message to Slack.' })
+})
+
+test('preserves CORS, preflight, and routing behavior', async (t) => {
   await t.test('blocked origin', async () => {
     const response = await sendRequest({
       method: 'POST',
@@ -128,12 +169,24 @@ test('preserves CORS and routing error responses', async (t) => {
       headers: { origin: 'https://untrusted.example' },
       body: JSON.stringify({
         message: 'Execution completed.',
-        webhookUrl: 'https://hooks.slack.test/services/example',
+        webhookUrl: 'https://hooks.slack.com/services/example',
       }),
     })
 
     assert.equal(response.statusCode, 403)
     assert.deepEqual(response.body, { error: 'CORS origin not allowed.' })
+  })
+
+  await t.test('allowed preflight', async () => {
+    const response = await sendRequest({
+      method: 'OPTIONS',
+      path: '/slack/task-summary',
+      headers: { origin: 'http://localhost:5173' },
+    })
+
+    assert.equal(response.statusCode, 204)
+    assert.equal(response.body, undefined)
+    assert.equal(response.headers['access-control-allow-origin'], 'http://localhost:5173')
   })
 
   await t.test('unknown route', async () => {

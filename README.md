@@ -61,11 +61,12 @@ O serviço não possui dependências npm de produção: usa as APIs nativas de H
 
 ## Variáveis de ambiente
 
-| Variável          | Obrigatória | Padrão                                           | Descrição                                                                                              |
-| ----------------- | ----------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `PORT`            | Não         | `3000`                                           | Porta do servidor HTTP local.                                                                          |
-| `ALLOWED_ORIGINS` | Não         | Aplicação local em `5173` e frontend de produção | Lista de origens CORS exatas, separadas por vírgula e sem barra final.                                 |
-| `NODE_ENV`        | Não         | Ambiente local                                   | Quando vale `production`, não abre uma porta local e mantém apenas a exportação do handler serverless. |
+| Variável                   | Obrigatória | Padrão                                           | Descrição                                                                                              |
+| -------------------------- | ----------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `PORT`                     | Não         | `3000`                                           | Porta do servidor HTTP local.                                                                          |
+| `ALLOWED_ORIGINS`          | Não         | Aplicação local em `5173` e frontend de produção | Lista de origens CORS exatas, separadas por vírgula e sem barra final.                                 |
+| `SLACK_REQUEST_TIMEOUT_MS` | Não         | `5000`                                           | Tempo máximo, em milissegundos, para a chamada ao webhook do Slack.                                    |
+| `NODE_ENV`                 | Não         | Ambiente local                                   | Quando vale `production`, não abre uma porta local e mantém apenas a exportação do handler serverless. |
 
 A aplicação carrega `.env` da raiz quando o arquivo existe. Variáveis já definidas no processo têm precedência sobre o arquivo.
 
@@ -102,16 +103,17 @@ A mensagem e a URL são normalizadas com `trim()` antes do envio. Campos vazios 
 
 #### Respostas
 
-| Status | Situação                                                         |
-| ------ | ---------------------------------------------------------------- |
-| `200`  | Resumo enviado ao Slack.                                         |
-| `204`  | Preflight CORS `OPTIONS` aceito.                                 |
-| `400`  | JSON inválido, mensagem ausente ou URL de webhook ausente.       |
-| `403`  | Origem bloqueada pela configuração CORS.                         |
-| `404`  | Rota inexistente.                                                |
-| `405`  | Método HTTP não permitido para uma rota existente.               |
-| `413`  | Corpo da requisição maior que 1 MiB.                             |
-| `500`  | Falha inesperada, incluindo rejeição do webhook remoto do Slack. |
+| Status | Situação                                                                |
+| ------ | ----------------------------------------------------------------------- |
+| `200`  | Resumo enviado ao Slack.                                                |
+| `204`  | Preflight CORS `OPTIONS` aceito.                                        |
+| `400`  | JSON inválido, campos ausentes ou URL fora dos hosts oficiais do Slack. |
+| `403`  | Origem bloqueada pela configuração CORS.                                |
+| `404`  | Rota inexistente.                                                       |
+| `405`  | Método HTTP não permitido para uma rota existente.                      |
+| `413`  | Corpo da requisição maior que 1 MiB.                                    |
+| `502`  | Timeout, indisponibilidade ou rejeição do webhook remoto do Slack.      |
+| `500`  | Falha interna inesperada.                                               |
 
 O serviço não persiste o conteúdo recebido e não registra a URL do webhook. Ainda assim, trate o payload como informação sensível durante depuração e observabilidade.
 
@@ -119,40 +121,44 @@ O serviço não persiste o conteúdo recebido e não registra a URL do webhook. 
 
 ```text
 src/
-├── application/
-│   └── send-task-summary.ts       # Contratos, validação e caso de uso
-├── infrastructure/
-│   └── slack-webhook-notifier.ts  # Integração HTTP com o Slack
-├── interfaces/http/
-│   ├── cors.ts                    # Política e cabeçalhos CORS
-│   ├── http-request.ts            # Leitura limitada e parsing do JSON
-│   ├── http-response.ts           # Respostas JSON
-│   └── router.ts                  # Resolução de rota e método
-├── config.ts                      # Ambiente e valores padrão
-├── errors.ts                      # Erros HTTP conhecidos
-├── index.ts                       # Entrada local e serverless
-└── server.ts                      # Composição das dependências e rotas
+├── config/                         # Ambiente, defaults e configuração tipada
+├── errors/                         # Erros HTTP operacionais
+├── http/                           # Parser, respostas e roteamento HTTP
+├── integrations/slack/             # Cliente externo do Incoming Webhook
+├── middleware/                     # CORS, request ID, erros e composição
+├── routes/                         # Adaptadores HTTP finos por operação
+├── services/                       # Orquestração dos casos de uso
+├── types/                          # Contratos compartilhados
+├── utils/                          # Logging estruturado e utilidades transversais
+├── validators/                     # Validação e normalização de entrada
+├── app.ts                          # Composition root testável
+├── index.ts                        # Entrada local e serverless
+└── server.ts                       # Instância padrão do handler
 
 test/
-└── server.test.mjs                # Testes HTTP com o runner nativo do Node.js
+└── server.test.mjs                 # Testes HTTP com o runner nativo do Node.js
 ```
 
 Fluxo principal:
 
 1. `index.ts` exporta o handler e, fora de produção, cria o servidor local;
-2. `server.ts` aplica CORS e encaminha a requisição para a tabela de rotas;
-3. o handler lê e valida o JSON;
-4. `SendTaskSummaryUseCase` valida a mensagem;
-5. `SlackWebhookNotifier` valida a URL e chama o webhook;
-6. erros HTTP conhecidos preservam seu status; falhas inesperadas retornam `500`.
+2. `app.ts` monta dependências, rotas e a cadeia de middlewares sem executar I/O;
+3. os middlewares tratam erro, request ID e CORS antes do roteador;
+4. a rota lê o JSON e delega sua validação ao contrato da operação;
+5. o serviço orquestra o envio sem conhecer HTTP, CORS ou detalhes do Slack;
+6. o cliente Slack executa a chamada externa com timeout e converte falhas em `502`;
+7. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
 
 ### Onde colocar mudanças
 
-- validação e regras da operação: `src/application/`;
-- integrações externas e detalhes de rede: `src/infrastructure/`;
-- protocolo HTTP, CORS, parsing e respostas: `src/interfaces/http/`;
-- composição de rotas e implementações: `src/server.ts`;
-- configuração: `src/config.ts` e `.env.example`.
+- middlewares leves e transversais: `src/middleware/`;
+- orquestração e regras da operação: `src/services/`;
+- validação e normalização de contratos: `src/validators/`;
+- integrações e chamadas externas: `src/integrations/`;
+- parsing, roteamento e respostas do protocolo: `src/http/`;
+- configuração tipada: `src/config/` e `.env.example`;
+- contratos compartilhados: `src/types/`;
+- montagem de dependências e rotas: `src/app.ts`.
 
 Evite criar uma nova camada ou abstração para um único uso sem uma necessidade concreta. Prefira funções pequenas, tipos próximos do código que os consome e APIs nativas do Node.js quando elas atendem ao requisito sem comprometer legibilidade.
 
@@ -162,10 +168,10 @@ Os testes usam `node:test`, iniciam o handler em uma porta efêmera e substituem
 
 - envio bem-sucedido e normalização dos campos;
 - JSON malformado;
-- mensagem e webhook ausentes;
-- bloqueio CORS;
-- rota inexistente;
-- método não permitido.
+- mensagem e webhook ausentes ou inválidos;
+- timeout/sinal e falhas da integração Slack;
+- request ID, bloqueio e preflight CORS;
+- rota inexistente e método não permitido.
 
 Execute toda a validação antes de abrir um pull request:
 
@@ -253,7 +259,7 @@ Antes do deploy, confirme:
 - **`CORS origin not allowed.`**: adicione a origem exata em `ALLOWED_ORIGINS`, sem barra final, e reinicie o processo.
 - **A alteração não apareceu com `npm run dev`**: o comando recompila, mas não reinicia `npm start`.
 - **A porta já está em uso**: altere `PORT` no `.env`.
-- **Falha do Slack retorna `500`**: confirme se o webhook está ativo e se o ambiente possui acesso de rede ao Slack.
+- **Falha do Slack retorna `502`**: confirme se o webhook está ativo e se o ambiente possui acesso de rede ao Slack.
 - **O hook alterou arquivos durante o commit**: revise os arquivos, execute `git add` novamente e repita o commit.
 
 ## Licença

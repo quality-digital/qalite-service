@@ -1,6 +1,6 @@
 # QaLite Service
 
-Serviço HTTP em Node.js e TypeScript responsável por receber um resumo de execução de QA, formatá-lo e enviá-lo para um webhook do Slack. O mesmo ponto de entrada atende ao servidor local e à função serverless publicada na Vercel.
+Serviço HTTP em Node.js e TypeScript responsável por receber uma mensagem de resumo de execução de QA e enviá-la para um webhook do Slack. O mesmo ponto de entrada atende ao servidor local e à função serverless publicada na Vercel.
 
 ## Requisitos
 
@@ -61,7 +61,7 @@ O modo `dev` observa e recompila os arquivos, mas não reinicia o processo HTTP.
 
 ### `POST /slack/task-summary`
 
-Aceita uma mensagem pronta ou dados estruturados para a montagem do resumo.
+Aceita uma mensagem pronta para envio ao Slack.
 
 #### Mensagem pronta
 
@@ -72,31 +72,10 @@ Aceita uma mensagem pronta ou dados estruturados para a montagem do resumo.
 }
 ```
 
-#### Resumo estruturado
-
-```json
-{
-  "webhookUrl": "https://hooks.slack.com/services/...",
-  "environmentSummary": {
-    "identifier": "Homologação",
-    "totalTimeMs": 125000,
-    "scenariosCount": 12,
-    "executedScenariosCount": 12,
-    "fix": { "type": "bug", "value": 2 },
-    "jira": "QA-123",
-    "suiteName": "Regressão",
-    "suiteDetails": "Checkout",
-    "participantsCount": 2,
-    "monitoredUrls": ["https://example.com"],
-    "attendees": [{ "name": "Pessoa QA", "email": "qa@example.com" }, "Pessoa convidada"]
-  }
-}
-```
-
 Respostas relevantes:
 
 - `200`: resumo enviado;
-- `400`: corpo JSON inválido, resumo ausente ou webhook ausente;
+- `400`: corpo JSON inválido, mensagem ausente ou webhook ausente;
 - `403`: origem bloqueada pela configuração CORS;
 - `404`: rota inexistente;
 - `405`: método HTTP não permitido;
@@ -113,8 +92,7 @@ src/
 │   ├── ports/             # Contratos usados pelos casos de uso
 │   └── usecases/          # Orquestração da regra de aplicação
 ├── domain/
-│   ├── entities/          # Tipos do payload de resumo
-│   └── services/          # Formatação da mensagem do Slack
+│   └── entities/          # Tipos do payload de resumo
 ├── infrastructure/slack/  # Integração concreta com o webhook
 ├── interfaces/http/       # CORS, parsing, respostas e roteamento HTTP
 ├── config.ts              # Leitura e normalização do ambiente
@@ -123,7 +101,7 @@ src/
 └── server.ts              # Composição e tratamento das requisições
 ```
 
-O fluxo principal é: rota HTTP → `SendTaskSummaryUseCase` → `TaskSummaryFormatter` → `SlackWebhookNotifier`. Mantenha as regras de formatação no domínio e detalhes de rede na infraestrutura.
+O fluxo principal é: rota HTTP → `SendTaskSummaryUseCase` → `SlackWebhookNotifier`. Mantenha a validação da mensagem no caso de uso e os detalhes de rede na infraestrutura.
 
 ## Como contribuir
 

@@ -1,27 +1,16 @@
 import { HttpError } from '../../errors.js'
 import type { TaskSummaryPayload } from '../../domain/entities/task-summary.js'
-import type { TaskSummaryFormatter } from '../../domain/services/task-summary-formatter.js'
 import type { SlackNotifier } from '../ports/slack-notifier.js'
 
 export class SendTaskSummaryUseCase {
-  constructor(
-    private readonly formatter: TaskSummaryFormatter,
-    private readonly notifier: SlackNotifier,
-  ) {}
+  constructor(private readonly notifier: SlackNotifier) {}
 
   async execute(payload: TaskSummaryPayload): Promise<void> {
-    const webhookUrl = payload?.webhookUrl
-    const directMessage = payload?.message?.trim()
-    if (directMessage) {
-      await this.notifier.sendMessage(directMessage, webhookUrl)
-      return
+    const message = payload?.message?.trim()
+    if (!message) {
+      throw new HttpError(400, 'Message is required.')
     }
 
-    if (!payload?.environmentSummary) {
-      throw new HttpError(400, 'Environment summary is required.')
-    }
-
-    const formattedMessage = this.formatter.buildMessage(payload)
-    await this.notifier.sendMessage(formattedMessage, webhookUrl)
+    await this.notifier.sendMessage(message, payload.webhookUrl)
   }
 }

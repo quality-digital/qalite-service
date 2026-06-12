@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import { config } from './config.js'
 import { HttpError } from './errors.js'
@@ -41,10 +41,3 @@ export const requestHandler = async (
     json(res, 500, { error: 'Internal server error.' })
   }
 }
-
-export const server = createServer((req, res) => {
-  requestHandler(req, res).catch((error) => {
-    console.error('[server] unhandled error', error)
-    json(res, 500, { error: 'Internal server error.' })
-  })
-})

@@ -1,69 +1,95 @@
 # QaLite Service
 
-Serviço HTTP em Node.js e TypeScript responsável por receber uma mensagem de resumo de execução de QA e enviá-la para um webhook do Slack. O mesmo ponto de entrada atende ao servidor local e à função serverless publicada na Vercel.
+Serviço HTTP em Node.js e TypeScript que recebe uma mensagem de resumo de execução de QA e a encaminha para um Incoming Webhook do Slack. O mesmo handler atende ao servidor HTTP local e à função serverless publicada na Vercel.
+
+## Sumário
+
+- [Requisitos](#requisitos)
+- [Primeiros passos](#primeiros-passos)
+- [Variáveis de ambiente](#variáveis-de-ambiente)
+- [Comandos](#comandos)
+- [API](#api)
+- [Arquitetura](#arquitetura)
+- [Testes e qualidade](#testes-e-qualidade)
+- [Como contribuir](#como-contribuir)
+- [Deploy](#deploy)
+- [Solução de problemas](#solução-de-problemas)
 
 ## Requisitos
 
 - Node.js 20 ou superior;
-- npm (incluído na instalação do Node.js);
-- uma URL de Incoming Webhook do Slack para testar o envio real;
-- Git para usar os hooks de qualidade do repositório.
+- npm, incluído na instalação do Node.js;
+- Git, necessário para os hooks locais;
+- uma URL de Incoming Webhook do Slack somente quando for testar uma integração real.
 
-As versões exatas das dependências npm são registradas em `package-lock.json`. Use `npm ci` em vez de `npm install` em CI ou quando quiser uma instalação totalmente reproduzível.
+O serviço não possui dependências npm de produção: usa as APIs nativas de HTTP, `fetch`, testes e leitura de arquivos do Node.js. As ferramentas de desenvolvimento estão fixadas por `package-lock.json`; prefira `npm ci` para obter uma instalação reproduzível.
 
-## Configuração local
+## Primeiros passos
 
-1. Clone o repositório e entre na pasta do projeto.
+1. Clone o repositório e acesse sua pasta.
 2. Instale as dependências:
 
    ```bash
    npm ci
    ```
 
-3. Crie o arquivo local de ambiente:
+3. Crie o arquivo de ambiente local:
 
    ```bash
    cp .env.example .env
    ```
 
-4. Ajuste as variáveis, se necessário:
+4. Gere o build e inicie o servidor:
 
-   | Variável          | Obrigatória | Padrão                                           | Descrição                                                                                            |
-   | ----------------- | ----------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------- |
-   | `PORT`            | Não         | `3000`                                           | Porta do servidor HTTP local.                                                                        |
-   | `ALLOWED_ORIGINS` | Não         | Aplicação local em `5173` e frontend de produção | Lista de origens CORS separadas por vírgula.                                                         |
-   | `NODE_ENV`        | Não         | Ambiente local                                   | Quando vale `production`, impede que o processo abra uma porta e mantém apenas o handler serverless. |
+   ```bash
+   npm run build
+   npm start
+   ```
 
-> Não inclua credenciais ou URLs privadas de webhook em arquivos versionados. O `.gitignore` já exclui os arquivos `.env` locais.
+5. Envie uma requisição de teste substituindo a URL do webhook:
 
-## Comandos disponíveis
+   ```bash
+   curl --request POST http://localhost:3000/slack/task-summary \
+     --header 'Content-Type: application/json' \
+     --data '{
+       "webhookUrl": "https://hooks.slack.com/services/...",
+       "message": "Execução finalizada com sucesso."
+     }'
+   ```
 
-| Comando             | Finalidade                                                           |
-| ------------------- | -------------------------------------------------------------------- |
-| `npm run dev`       | Compila o TypeScript continuamente durante o desenvolvimento.        |
-| `npm run build`     | Remove artefatos antigos de `dist/` e gera uma compilação limpa.     |
-| `npm start`         | Inicia o JavaScript já compilado em `dist/index.js`.                 |
-| `npm run lint`      | Verifica a formatação de todos os arquivos suportados pelo Prettier. |
-| `npm run typecheck` | Executa o TypeScript em modo estrito sem gerar arquivos.             |
-| `npm run format`    | Aplica a formatação do Prettier.                                     |
-| `npm run check`     | Executa lint, typecheck e build, na mesma ordem usada pela CI.       |
+> Nunca adicione URLs privadas de webhook, tokens ou outros segredos ao repositório. Arquivos `.env` locais são ignorados pelo Git.
 
-Para executar o serviço localmente em modo semelhante ao de produção:
+## Variáveis de ambiente
 
-```bash
-npm run build
-npm start
-```
+| Variável          | Obrigatória | Padrão                                           | Descrição                                                                                              |
+| ----------------- | ----------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| `PORT`            | Não         | `3000`                                           | Porta do servidor HTTP local.                                                                          |
+| `ALLOWED_ORIGINS` | Não         | Aplicação local em `5173` e frontend de produção | Lista de origens CORS exatas, separadas por vírgula e sem barra final.                                 |
+| `NODE_ENV`        | Não         | Ambiente local                                   | Quando vale `production`, não abre uma porta local e mantém apenas a exportação do handler serverless. |
 
-O modo `dev` observa e recompila os arquivos, mas não reinicia o processo HTTP. Em dois terminais, use `npm run dev` no primeiro e `npm start` no segundo; reinicie o segundo quando quiser carregar a nova compilação.
+A aplicação carrega `.env` da raiz quando o arquivo existe. Variáveis já definidas no processo têm precedência sobre o arquivo.
+
+## Comandos
+
+| Comando             | Finalidade                                                                 |
+| ------------------- | -------------------------------------------------------------------------- |
+| `npm run clean`     | Remove `dist/` para evitar artefatos obsoletos.                            |
+| `npm run build`     | Executa a limpeza e compila `src/` para `dist/`.                           |
+| `npm start`         | Inicia o JavaScript compilado em `dist/index.js`.                          |
+| `npm run dev`       | Recompila TypeScript continuamente; não reinicia o processo HTTP.          |
+| `npm run lint`      | Verifica a formatação dos arquivos com Prettier.                           |
+| `npm run typecheck` | Valida os tipos em modo estrito sem emitir arquivos.                       |
+| `npm test`          | Gera um build limpo e executa os testes nativos do Node.js.                |
+| `npm run format`    | Aplica a formatação do Prettier.                                           |
+| `npm run check`     | Executa lint, typecheck, build e testes, na mesma sequência usada pela CI. |
+
+Para trabalhar em modo de observação, execute `npm run dev` em um terminal. Em outro terminal, execute `npm start` e reinicie esse processo quando quiser carregar a compilação mais recente.
 
 ## API
 
 ### `POST /slack/task-summary`
 
-Aceita uma mensagem pronta para envio ao Slack.
-
-#### Mensagem pronta
+Recebe uma mensagem pronta e a envia ao webhook informado na própria requisição.
 
 ```json
 {
@@ -72,95 +98,163 @@ Aceita uma mensagem pronta para envio ao Slack.
 }
 ```
 
-Respostas relevantes:
+A mensagem e a URL são normalizadas com `trim()` antes do envio. Campos vazios são rejeitados.
 
-- `200`: resumo enviado;
-- `400`: corpo JSON inválido, mensagem ausente ou webhook ausente;
-- `403`: origem bloqueada pela configuração CORS;
-- `404`: rota inexistente;
-- `405`: método HTTP não permitido;
-- `413`: corpo maior que 1 MiB;
-- `500`: erro inesperado ou rejeição do webhook remoto.
+#### Respostas
 
-A requisição de preflight `OPTIONS` recebe `204` quando a origem é permitida.
+| Status | Situação                                                         |
+| ------ | ---------------------------------------------------------------- |
+| `200`  | Resumo enviado ao Slack.                                         |
+| `204`  | Preflight CORS `OPTIONS` aceito.                                 |
+| `400`  | JSON inválido, mensagem ausente ou URL de webhook ausente.       |
+| `403`  | Origem bloqueada pela configuração CORS.                         |
+| `404`  | Rota inexistente.                                                |
+| `405`  | Método HTTP não permitido para uma rota existente.               |
+| `413`  | Corpo da requisição maior que 1 MiB.                             |
+| `500`  | Falha inesperada, incluindo rejeição do webhook remoto do Slack. |
 
-## Estrutura do projeto
+O serviço não persiste o conteúdo recebido e não registra a URL do webhook. Ainda assim, trate o payload como informação sensível durante depuração e observabilidade.
+
+## Arquitetura
 
 ```text
 src/
 ├── application/
-│   ├── ports/             # Contratos usados pelos casos de uso
-│   └── usecases/          # Orquestração da regra de aplicação
-├── domain/
-│   └── entities/          # Tipos do payload de resumo
-├── infrastructure/slack/  # Integração concreta com o webhook
-├── interfaces/http/       # CORS, parsing, respostas e roteamento HTTP
-├── config.ts              # Leitura e normalização do ambiente
-├── errors.ts              # Erros HTTP conhecidos
-├── index.ts               # Entrada local e serverless
-└── server.ts              # Composição e tratamento das requisições
+│   └── send-task-summary.ts       # Contratos, validação e caso de uso
+├── infrastructure/
+│   └── slack-webhook-notifier.ts  # Integração HTTP com o Slack
+├── interfaces/http/
+│   ├── cors.ts                    # Política e cabeçalhos CORS
+│   ├── http-request.ts            # Leitura limitada e parsing do JSON
+│   ├── http-response.ts           # Respostas JSON
+│   └── router.ts                  # Resolução de rota e método
+├── config.ts                      # Ambiente e valores padrão
+├── errors.ts                      # Erros HTTP conhecidos
+├── index.ts                       # Entrada local e serverless
+└── server.ts                      # Composição das dependências e rotas
+
+test/
+└── server.test.mjs                # Testes HTTP com o runner nativo do Node.js
 ```
 
-O fluxo principal é: rota HTTP → `SendTaskSummaryUseCase` → `SlackWebhookNotifier`. Mantenha a validação da mensagem no caso de uso e os detalhes de rede na infraestrutura.
+Fluxo principal:
+
+1. `index.ts` exporta o handler e, fora de produção, cria o servidor local;
+2. `server.ts` aplica CORS e encaminha a requisição para a tabela de rotas;
+3. o handler lê e valida o JSON;
+4. `SendTaskSummaryUseCase` valida a mensagem;
+5. `SlackWebhookNotifier` valida a URL e chama o webhook;
+6. erros HTTP conhecidos preservam seu status; falhas inesperadas retornam `500`.
+
+### Onde colocar mudanças
+
+- validação e regras da operação: `src/application/`;
+- integrações externas e detalhes de rede: `src/infrastructure/`;
+- protocolo HTTP, CORS, parsing e respostas: `src/interfaces/http/`;
+- composição de rotas e implementações: `src/server.ts`;
+- configuração: `src/config.ts` e `.env.example`.
+
+Evite criar uma nova camada ou abstração para um único uso sem uma necessidade concreta. Prefira funções pequenas, tipos próximos do código que os consome e APIs nativas do Node.js quando elas atendem ao requisito sem comprometer legibilidade.
+
+## Testes e qualidade
+
+Os testes usam `node:test`, iniciam o handler em uma porta efêmera e substituem apenas a chamada externa ao Slack. A suíte cobre:
+
+- envio bem-sucedido e normalização dos campos;
+- JSON malformado;
+- mensagem e webhook ausentes;
+- bloqueio CORS;
+- rota inexistente;
+- método não permitido.
+
+Execute toda a validação antes de abrir um pull request:
+
+```bash
+npm run check
+```
+
+O TypeScript opera em modo estrito, rejeita símbolos sem uso e não emite JavaScript quando há erro. O Prettier concentra as regras de estilo, evitando configuração duplicada com outro linter. A CI usa Node.js 20, instala com `npm ci` e executa o mesmo comando `npm run check`.
+
+Ao corrigir um bug, adicione um teste que falhe sem a correção. Ao alterar o contrato HTTP, atualize os testes e este README no mesmo pull request.
 
 ## Como contribuir
 
-1. Crie uma branch a partir de `main`; commits e pushes diretos em `main`, `master` e `develop` são bloqueados pelos hooks locais.
-2. Faça alterações pequenas e focadas, sem misturar refatorações sem relação com a correção ou funcionalidade.
-3. Preserve o contrato HTTP e o formato visual das mensagens, a menos que a mudança tenha sido explicitamente solicitada.
-4. Adicione ou atualize documentação quando alterar payloads, variáveis ou comandos.
-5. Antes de abrir o pull request, execute:
+### Fluxo recomendado
 
-   ```bash
-   npm run check
-   ```
+1. Atualize sua cópia de `main` e crie uma branch curta e descritiva.
+2. Instale dependências com `npm ci`.
+3. Faça uma alteração focada, preservando o contrato HTTP e o comportamento existente quando não houver pedido explícito para mudá-los.
+4. Atualize testes, `.env.example` e documentação quando aplicável.
+5. Execute `npm run check`.
+6. Revise `git diff` e confirme que artefatos, segredos e mudanças sem relação não foram incluídos.
+7. Crie um commit no padrão Conventional Commits.
+8. Abra um pull request descrevendo motivação, solução, validação e riscos.
 
-6. Use commits no padrão [Conventional Commits](https://www.conventionalcommits.org/), por exemplo:
+### Convenções de código
 
-   ```text
-   fix: handle empty Slack messages
-   feat: add execution owner to task summary
-   docs: document local environment
-   ```
+- use TypeScript estrito e imports ESM com extensão `.js`, como exigido pelo modo `NodeNext`;
+- não use `any` para contornar validações sem justificar a exceção;
+- mantenha mensagens públicas de erro estáveis, pois clientes podem exibi-las;
+- não registre payloads completos nem URLs de webhook;
+- preserve o limite de corpo e a política CORS ao alterar a camada HTTP;
+- não adicione uma dependência para uma funcionalidade pequena já coberta pelo Node.js;
+- execute `npm run format` antes de finalizar mudanças extensas de texto ou código.
 
-7. Descreva no pull request o motivo da mudança, o comportamento afetado, como validar e qualquer risco conhecido.
+### Commits
+
+Use [Conventional Commits](https://www.conventionalcommits.org/):
+
+```text
+fix: reject blank webhook URLs
+feat: support a new summary endpoint
+test: cover Slack failure responses
+docs: clarify local setup
+chore: simplify build scripts
+```
+
+O `commit-msg` valida a mensagem com Commitlint. Os hooks também impedem commit ou push direto nas branches `main`, `master` e `develop`.
 
 ### Hooks locais
 
-O `npm ci` executa o script `prepare` e configura o Husky:
+O script `prepare`, executado durante `npm ci`, configura o Husky:
 
-- `pre-commit`: formata arquivos staged com `lint-staged` e bloqueia commits em branches protegidas;
-- `commit-msg`: valida a mensagem com Commitlint;
-- `pre-push`: bloqueia pushes em branches protegidas.
+- `pre-commit`: formata arquivos staged com `lint-staged` e valida a branch;
+- `commit-msg`: valida a mensagem do commit;
+- `pre-push`: valida a branch.
 
-Se um hook alterar arquivos durante o commit, revise o diff e adicione novamente os arquivos formatados antes de repetir o commit. Não ignore hooks em alterações normais; se houver uma limitação excepcional de ambiente, registre-a no pull request.
+Se o hook de pre-commit formatar um arquivo, revise o resultado, adicione-o novamente ao stage e repita o commit. Não ignore os hooks em alterações normais.
 
-## Qualidade e CI
+### Checklist do pull request
 
-A configuração TypeScript usa modo estrito, rejeita símbolos sem uso e não emite JavaScript quando há erro. O Prettier é a única ferramenta de estilo, evitando regras duplicadas entre formatadores e linters.
-
-A workflow de CI roda em pull requests para `main` e também pode ser iniciada manualmente. Ela instala as dependências com `npm ci` e executa `npm run check` em Node.js 20.
-
-O projeto ainda não possui uma suíte automatizada de testes. Mudanças de regra de negócio devem incluir testes assim que uma estratégia de execução TypeScript for adotada; até lá, valide manualmente os códigos HTTP e o conteúdo enviado a um webhook controlado.
+- [ ] mudança pequena e com objetivo claro;
+- [ ] nenhuma credencial, URL privada ou artefato gerado foi versionado;
+- [ ] contrato HTTP e CORS foram preservados ou documentados;
+- [ ] testes cobrem o comportamento alterado;
+- [ ] `README.md` e `.env.example` foram atualizados quando necessário;
+- [ ] `npm run check` passou localmente;
+- [ ] riscos e passos de validação manual foram descritos.
 
 ## Deploy
 
-A Vercel usa `src/index.ts` como função Node e define `NODE_ENV=production`. Nesse modo o arquivo exporta somente o handler HTTP; o servidor com `listen()` é criado apenas em execução local.
+A Vercel usa `src/index.ts` como função Node e define `NODE_ENV=production`. Nesse ambiente, o módulo exporta o handler sem executar `listen()`. Em execução local, o mesmo módulo cria um servidor na porta configurada.
 
 Antes do deploy, confirme:
 
 - `npm run check` concluído com sucesso;
 - origens de produção presentes em `ALLOWED_ORIGINS`;
-- nenhuma URL de webhook ou credencial versionada;
-- frontend preparado para tratar respostas `4xx` e `5xx`.
+- nenhuma credencial ou URL de webhook versionada;
+- clientes preparados para respostas `4xx` e `5xx`;
+- webhook real validado em ambiente controlado, se a integração tiver mudado.
 
 ## Solução de problemas
 
-- **`Webhook URL is required.`**: envie `webhookUrl` no JSON; ele não é lido do ambiente.
+- **`Webhook URL is required.`**: envie `webhookUrl` no JSON; o serviço não lê essa URL do ambiente.
+- **`Message is required.`**: envie `message` com pelo menos um caractere não branco.
 - **`CORS origin not allowed.`**: adicione a origem exata em `ALLOWED_ORIGINS`, sem barra final, e reinicie o processo.
-- **A alteração não apareceu com `npm run dev`**: o comando recompila, mas não reinicia o servidor; reinicie `npm start`.
+- **A alteração não apareceu com `npm run dev`**: o comando recompila, mas não reinicia `npm start`.
 - **A porta já está em uso**: altere `PORT` no `.env`.
 - **Falha do Slack retorna `500`**: confirme se o webhook está ativo e se o ambiente possui acesso de rede ao Slack.
+- **O hook alterou arquivos durante o commit**: revise os arquivos, execute `git add` novamente e repita o commit.
 
 ## Licença
 

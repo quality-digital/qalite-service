@@ -1,16 +1,17 @@
-import { IncomingMessage } from 'node:http'
+import type { IncomingMessage } from 'node:http'
 
 import { HttpError } from '../../errors.js'
+
+const MAX_BODY_SIZE = 1024 * 1024
 
 export const readJsonBody = async <T>(req: IncomingMessage): Promise<T> => {
   const chunks: Buffer[] = []
   let total = 0
-  const MAX_SIZE = 1024 * 1024
 
   for await (const chunk of req) {
     const buffer = Buffer.from(chunk)
     total += buffer.length
-    if (total > MAX_SIZE) {
+    if (total > MAX_BODY_SIZE) {
       throw new HttpError(413, 'Payload too large.')
     }
 

@@ -1,10 +1,8 @@
-import { IncomingMessage, ServerResponse } from 'node:http'
-
-import { SendTaskSummaryUseCase } from '../../application/usecases/send-task-summary.js'
-import { TaskSummaryPayload } from '../../domain/entities/task-summary.js'
-import { json } from './http-response.js'
+import type { SendTaskSummaryUseCase } from '../../application/usecases/send-task-summary.js'
+import type { TaskSummaryPayload } from '../../domain/entities/task-summary.js'
 import { readJsonBody } from './http-request.js'
-import { RouteTable } from './router.js'
+import { json } from './http-response.js'
+import type { RouteHandler, RouteTable } from './router.js'
 
 interface RouteDependencies {
   sendTaskSummary: SendTaskSummaryUseCase
@@ -12,7 +10,7 @@ interface RouteDependencies {
 
 const buildSlackSummaryHandler = (
   sendTaskSummary: SendTaskSummaryUseCase,
-): ((req: IncomingMessage, res: ServerResponse) => Promise<void>) => {
+): RouteHandler => {
   return async (req, res) => {
     const payload = await readJsonBody<TaskSummaryPayload>(req)
     await sendTaskSummary.execute(payload)

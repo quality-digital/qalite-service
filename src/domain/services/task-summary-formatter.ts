@@ -1,4 +1,4 @@
-import {
+import type {
   EnvironmentSummaryPayload,
   TaskSummaryPayload,
 } from '../entities/task-summary.js'

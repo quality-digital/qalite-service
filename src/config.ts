@@ -34,7 +34,7 @@ const DEFAULT_ALLOWED_ORIGINS = [
 
 loadEnvFile()
 
-export interface AppConfig {
+interface AppConfig {
   allowedOrigins: string[]
   port: number
   isProduction: boolean

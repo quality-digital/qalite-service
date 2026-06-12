@@ -3,17 +3,15 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "outDir": "dist",
+    "lib": ["ES2022"],
+    "types": ["node"],
     "rootDir": "src",
-    "resolveJsonModule": true,
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
+    "outDir": "dist",
     "strict": true,
-    "allowSyntheticDefaultImports": true,
-    "lib": ["es2022", "dom"],
-    "typeRoots": ["./types", "./node_modules/@types"]
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noEmitOnError": true,
+    "skipLibCheck": true
   },
-  "include": ["src", "types"],
-  "exclude": ["dist"]
+  "include": ["src/**/*.ts"]
 }

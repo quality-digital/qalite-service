@@ -1,41 +1,26 @@
-# Dependências
+# Dependencies
 node_modules/
 .npm/
 .pnpm/
 .yarn/
 
 # Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+*.log
 
-# Sistema operacional
-.DS_Store
-Thumbs.db
-
-# Ambiente / credenciais
+# Environment and credentials
 .env
 .env.local
 .env.*.local
 
-# Build / cache
-.next/
+# Build, test, and platform output
 dist/
-out/
-.cache/
+coverage/
 .vercel/
 
-# IDE / editor
+# Operating system and editors
+.DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Testes
-coverage/
-.vercel
-
-.vercel
-.vercel

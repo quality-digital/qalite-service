@@ -1,4 +1,4 @@
-import { ServerResponse } from 'node:http'
+import type { ServerResponse } from 'node:http'
 
 export const json = (res: ServerResponse, statusCode: number, payload: unknown): void => {
   res.statusCode = statusCode

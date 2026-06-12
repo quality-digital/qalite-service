@@ -1,8 +1,10 @@
+import { createServer } from 'node:http'
+
 import { config } from './config.js'
-import { requestHandler, server } from './server.js'
+import { requestHandler } from './server.js'
 
 if (!config.isProduction) {
-  server.listen(config.port)
+  createServer(requestHandler).listen(config.port)
 }
 
 export default requestHandler

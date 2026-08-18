@@ -1,5 +1,14 @@
 import { HttpError } from '../errors/http-error.js'
-import type { TaskSummaryInput, TaskSummaryPayload } from '../types/task-summary.js'
+
+interface TaskSummaryInput {
+  message: string
+  webhookUrl: string
+}
+
+interface TaskSummaryPayload {
+  message?: unknown
+  webhookUrl?: unknown
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)

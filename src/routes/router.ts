@@ -1,7 +1,7 @@
 import { URL } from 'node:url'
 
-import { HttpError } from '../errors/http-error.js'
-import type { HttpHandler, HttpMethod, RouteTable } from '../types/http.js'
+import { HttpError } from '../utils/http-error.js'
+import type { HttpHandler, HttpMethod, RouteTable } from '../utils/http.js'
 
 const HTTP_METHODS = new Set<HttpMethod>(['DELETE', 'GET', 'PATCH', 'POST', 'PUT'])
 

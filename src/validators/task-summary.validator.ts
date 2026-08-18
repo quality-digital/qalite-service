@@ -1,6 +1,6 @@
-import { HttpError } from '../errors/http-error.js'
+import { HttpError } from '../utils/http-error.js'
 
-interface TaskSummaryInput {
+export interface TaskSummaryInput {
   message: string
   webhookUrl: string
 }

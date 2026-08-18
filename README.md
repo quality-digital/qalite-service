@@ -76,7 +76,7 @@ A aplicação carrega `.env` da raiz quando o arquivo existe. Variáveis já def
 | ------------------- | -------------------------------------------------------------------------- |
 | `npm run clean`     | Remove `dist/` para evitar artefatos obsoletos.                            |
 | `npm run build`     | Executa a limpeza e compila `src/` para `dist/`.                           |
-| `npm start`         | Inicia o JavaScript compilado em `dist/index.js`.                          |
+| `npm start`         | Inicia o JavaScript compilado em `dist/app/index.js`.                      |
 | `npm run dev`       | Recompila TypeScript continuamente; não reinicia o processo HTTP.          |
 | `npm run lint`      | Verifica a formatação dos arquivos com Prettier.                           |
 | `npm run typecheck` | Valida os tipos em modo estrito sem emitir arquivos.                       |
@@ -122,11 +122,9 @@ O serviço não persiste o conteúdo recebido e não registra a URL do webhook. 
 ```text
 src/
 ├── controllers/                    # Entrada e saída das requisições
-├── services/                       # Orquestração do fluxo de comunicação
 ├── clients/                        # Comunicação com APIs e sistemas externos
 ├── routes/                         # Rotas expostas e roteador HTTP
 ├── middlewares/                    # CORS, request ID, erros e composição
-├── mappers/                        # Transformação de payloads externos
 ├── validators/                     # Validações e normalização reutilizáveis
 ├── utils/                          # HTTP, erros, tipos e logging compartilhados
 ├── config/                         # Ambiente, defaults e configuração tipada
@@ -139,10 +137,10 @@ test/
 Fluxo principal:
 
 1. `app/index.ts` exporta o handler e, fora de produção, cria o servidor local;
-2. `app/create-app.ts` monta dependências, serviços, rotas e middlewares sem executar I/O;
+2. `app/create-app.ts` monta o cliente Slack, as rotas e os middlewares sem executar I/O;
 3. os middlewares tratam erro, request ID e CORS antes do roteador;
-4. o controller lê e valida o JSON e delega a operação ao serviço;
-5. o serviço orquestra o cliente Slack, que mapeia o payload, executa a chamada externa com timeout e converte falhas em `502`;
+4. o controller lê e valida o JSON e delega o envio ao cliente Slack;
+5. o cliente Slack monta o payload, executa a chamada externa com timeout e converte falhas em `502`;
 6. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
 
 ### Onde colocar mudanças
@@ -150,10 +148,8 @@ Fluxo principal:
 - middlewares leves e transversais: `src/middlewares/`;
 - entrada, validação e resposta da operação: `src/controllers/`;
 - validação e normalização de contratos: `src/validators/`;
-- orquestração de casos de uso: `src/services/`;
 - integrações e chamadas externas: `src/clients/`;
 - definição e resolução de rotas: `src/routes/`;
-- transformação de payloads externos: `src/mappers/`;
 - parsing, respostas, erros e tipos compartilhados: `src/utils/`;
 - configuração tipada: `src/config/` e `.env.example`;
 - montagem de dependências e inicialização: `src/app/`.
@@ -240,7 +236,7 @@ Se o hook de pre-commit formatar um arquivo, revise o resultado, adicione-o nova
 
 ## Deploy
 
-A Vercel usa `src/index.ts` como função Node e define `NODE_ENV=production`. Nesse ambiente, o módulo exporta o handler sem executar `listen()`. Em execução local, o mesmo módulo cria um servidor na porta configurada.
+A Vercel usa `src/app/index.ts` como função Node e define `NODE_ENV=production`. Nesse ambiente, o módulo exporta o handler sem executar `listen()`. Em execução local, o mesmo módulo cria um servidor na porta configurada.
 
 Antes do deploy, confirme:
 

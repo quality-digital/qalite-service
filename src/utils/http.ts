@@ -8,5 +8,4 @@ export type Middleware = (
   next: Next,
 ) => Promise<void>
 
-export type HttpMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT'
-export type RouteTable = Record<string, Partial<Record<HttpMethod, HttpHandler>>>
+export type RouteTable = Record<string, Partial<Record<string, HttpHandler>>>

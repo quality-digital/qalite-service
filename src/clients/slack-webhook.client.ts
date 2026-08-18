@@ -1,4 +1,3 @@
-import { toSlackMessage } from '../mappers/slack-message.mapper.js'
 import { ExternalServiceError } from '../utils/external-service-error.js'
 
 export class SlackWebhookClient {
@@ -12,7 +11,7 @@ export class SlackWebhookClient {
       const response = await (this.fetchImplementation ?? globalThis.fetch)(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(toSlackMessage(message)),
+        body: JSON.stringify({ text: message }),
         signal: AbortSignal.timeout(this.timeoutMs),
       })
 

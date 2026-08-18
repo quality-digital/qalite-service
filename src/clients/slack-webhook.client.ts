@@ -1,27 +1,24 @@
 import { ExternalServiceError } from '../utils/external-service-error.js'
 
-export class SlackWebhookClient {
-  constructor(
-    private readonly timeoutMs: number,
-    private readonly fetchImplementation?: typeof fetch,
-  ) {}
+export const sendSlackMessage = async (
+  message: string,
+  webhookUrl: string,
+  timeoutMs: number,
+): Promise<void> => {
+  try {
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: message }),
+      signal: AbortSignal.timeout(timeoutMs),
+    })
 
-  async send(message: string, webhookUrl: string): Promise<void> {
-    try {
-      const response = await (this.fetchImplementation ?? globalThis.fetch)(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: message }),
-        signal: AbortSignal.timeout(this.timeoutMs),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Slack webhook responded with status ${response.status}`)
-      }
-    } catch (error) {
-      throw new ExternalServiceError('slack', 'Unable to deliver message to Slack.', {
-        cause: error,
-      })
+    if (!response.ok) {
+      throw new Error(`Slack webhook responded with status ${response.status}`)
     }
+  } catch (error) {
+    throw new ExternalServiceError('slack', 'Unable to deliver message to Slack.', {
+      cause: error,
+    })
   }
 }

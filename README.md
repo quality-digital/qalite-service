@@ -121,13 +121,12 @@ O serviço não persiste o conteúdo recebido e não registra a URL do webhook. 
 
 ```text
 src/
+├── controllers/                    # Entrada e saída da operação HTTP
 ├── config/                         # Ambiente, defaults e configuração tipada
 ├── errors/                         # Erros HTTP operacionais
 ├── http/                           # Parser, respostas e roteamento HTTP
 ├── integrations/slack/             # Cliente externo do Incoming Webhook
 ├── middleware/                     # CORS, request ID, erros e composição
-├── routes/                         # Adaptadores HTTP finos por operação
-├── services/                       # Orquestração dos casos de uso
 ├── types/                          # Contratos compartilhados
 ├── utils/                          # Logging estruturado e utilidades transversais
 ├── validators/                     # Validação e normalização de entrada
@@ -144,15 +143,14 @@ Fluxo principal:
 1. `index.ts` exporta o handler e, fora de produção, cria o servidor local;
 2. `app.ts` monta dependências, rotas e a cadeia de middlewares sem executar I/O;
 3. os middlewares tratam erro, request ID e CORS antes do roteador;
-4. a rota lê o JSON e delega sua validação ao contrato da operação;
-5. o serviço orquestra o envio sem conhecer HTTP, CORS ou detalhes do Slack;
-6. o cliente Slack executa a chamada externa com timeout e converte falhas em `502`;
-7. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
+4. o controller lê e valida o JSON e delega o envio ao cliente Slack;
+5. o cliente Slack executa a chamada externa com timeout e converte falhas em `502`;
+6. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
 
 ### Onde colocar mudanças
 
 - middlewares leves e transversais: `src/middleware/`;
-- orquestração e regras da operação: `src/services/`;
+- entrada, validação e resposta da operação: `src/controllers/`;
 - validação e normalização de contratos: `src/validators/`;
 - integrações e chamadas externas: `src/integrations/`;
 - parsing, roteamento e respostas do protocolo: `src/http/`;

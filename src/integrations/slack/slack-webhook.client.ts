@@ -1,7 +1,6 @@
 import { ExternalServiceError } from '../../errors/external-service-error.js'
-import type { MessageNotifier } from '../../types/message-notifier.js'
 
-export class SlackWebhookClient implements MessageNotifier {
+export class SlackWebhookClient {
   constructor(
     private readonly timeoutMs: number,
     private readonly fetchImplementation?: typeof fetch,

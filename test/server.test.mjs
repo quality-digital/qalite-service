@@ -101,7 +101,7 @@ test('rejects malformed JSON without calling Slack', async () => {
   assert.equal(slackRequests.length, 0)
 })
 
-test('validates the task summary contract before running the service', async (t) => {
+test('validates the task summary contract before calling Slack', async (t) => {
   await t.test('missing message', async () => {
     const response = await sendRequest({
       method: 'POST',

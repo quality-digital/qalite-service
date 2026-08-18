@@ -5,8 +5,7 @@ import { composeMiddleware } from './middleware/compose.js'
 import { createCorsMiddleware } from './middleware/cors.middleware.js'
 import { createErrorMiddleware } from './middleware/error.middleware.js'
 import { requestIdMiddleware } from './middleware/request-id.middleware.js'
-import { createTaskSummaryHandler } from './routes/task-summary.route.js'
-import { TaskSummaryService } from './services/task-summary.service.js'
+import { createTaskSummaryController } from './controllers/task-summary.controller.js'
 import type { HttpHandler, RouteTable } from './types/http.js'
 import type { Logger } from './utils/logger.js'
 
@@ -23,10 +22,9 @@ export const createApp = (
     config.slack.requestTimeoutMs,
     dependencies.fetchImplementation,
   )
-  const taskSummaryService = new TaskSummaryService(slackClient)
   const routes: RouteTable = {
     '/slack/task-summary': {
-      POST: createTaskSummaryHandler(taskSummaryService),
+      POST: createTaskSummaryController(slackClient),
     },
   }
 

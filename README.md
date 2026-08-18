@@ -121,9 +121,7 @@ O serviço não persiste o conteúdo recebido e não registra a URL do webhook. 
 
 ```text
 src/
-├── controllers/                    # Entrada e saída das requisições
 ├── clients/                        # Comunicação com APIs e sistemas externos
-├── routes/                         # Rotas expostas e roteador HTTP
 ├── middlewares/                    # CORS, request ID, erros e composição
 ├── validators/                     # Validações e normalização reutilizáveis
 ├── utils/                          # HTTP, erros, tipos e logging compartilhados
@@ -137,19 +135,18 @@ test/
 Fluxo principal:
 
 1. `app/index.ts` exporta o handler e, fora de produção, cria o servidor local;
-2. `app/create-app.ts` monta o cliente Slack, as rotas e os middlewares sem executar I/O;
-3. os middlewares tratam erro, request ID e CORS antes do roteador;
-4. o controller lê e valida o JSON e delega o envio ao cliente Slack;
+2. `app/create-app.ts` monta o cliente Slack, a única rota e os middlewares sem executar I/O;
+3. os middlewares tratam erro, request ID e CORS antes do handler da rota;
+4. o handler da rota lê e valida o JSON e delega o envio ao cliente Slack;
 5. o cliente Slack monta o payload, executa a chamada externa com timeout e converte falhas em `502`;
 6. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
 
 ### Onde colocar mudanças
 
 - middlewares leves e transversais: `src/middlewares/`;
-- entrada, validação e resposta da operação: `src/controllers/`;
 - validação e normalização de contratos: `src/validators/`;
 - integrações e chamadas externas: `src/clients/`;
-- definição e resolução de rotas: `src/routes/`;
+- definição e resolução da rota: `src/app/create-app.ts`;
 - parsing, respostas, erros e tipos compartilhados: `src/utils/`;
 - configuração tipada: `src/config/` e `.env.example`;
 - montagem de dependências e inicialização: `src/app/`.

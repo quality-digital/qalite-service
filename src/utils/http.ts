@@ -7,5 +7,3 @@ export type Middleware = (
   res: ServerResponse,
   next: Next,
 ) => Promise<void>
-
-export type RouteTable = Record<string, Partial<Record<string, HttpHandler>>>

@@ -3,11 +3,11 @@
   "version": "1.0.0",
   "description": "QaLite-Servidor",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/app/index.js",
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "npm run clean && tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "node dist/app/index.js",
     "dev": "tsc -w -p tsconfig.json",
     "lint": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",

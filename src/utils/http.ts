@@ -7,6 +7,3 @@ export type Middleware = (
   res: ServerResponse,
   next: Next,
 ) => Promise<void>
-
-export type HttpMethod = 'DELETE' | 'GET' | 'PATCH' | 'POST' | 'PUT'
-export type RouteTable = Record<string, Partial<Record<HttpMethod, HttpHandler>>>

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createServer, request } from 'node:http'
 import { after, before, beforeEach, test } from 'node:test'
 
-import { requestHandler } from '../dist/server.js'
+import { requestHandler } from '../dist/app/server.js'
 
 const originalFetch = globalThis.fetch
 
@@ -101,7 +101,7 @@ test('rejects malformed JSON without calling Slack', async () => {
   assert.equal(slackRequests.length, 0)
 })
 
-test('validates the task summary contract before running the service', async (t) => {
+test('validates the task summary contract before calling Slack', async (t) => {
   await t.test('missing message', async () => {
     const response = await sendRequest({
       method: 'POST',

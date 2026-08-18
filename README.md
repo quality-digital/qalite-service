@@ -76,7 +76,7 @@ A aplicação carrega `.env` da raiz quando o arquivo existe. Variáveis já def
 | ------------------- | -------------------------------------------------------------------------- |
 | `npm run clean`     | Remove `dist/` para evitar artefatos obsoletos.                            |
 | `npm run build`     | Executa a limpeza e compila `src/` para `dist/`.                           |
-| `npm start`         | Inicia o JavaScript compilado em `dist/index.js`.                          |
+| `npm start`         | Inicia o JavaScript compilado em `dist/app/index.js`.                      |
 | `npm run dev`       | Recompila TypeScript continuamente; não reinicia o processo HTTP.          |
 | `npm run lint`      | Verifica a formatação dos arquivos com Prettier.                           |
 | `npm run typecheck` | Valida os tipos em modo estrito sem emitir arquivos.                       |
@@ -121,19 +121,12 @@ O serviço não persiste o conteúdo recebido e não registra a URL do webhook. 
 
 ```text
 src/
+├── clients/                        # Comunicação com APIs e sistemas externos
+├── middlewares/                    # CORS, request ID, erros e composição
+├── validators/                     # Validações e normalização reutilizáveis
+├── utils/                          # HTTP, erros, tipos e logging compartilhados
 ├── config/                         # Ambiente, defaults e configuração tipada
-├── errors/                         # Erros HTTP operacionais
-├── http/                           # Parser, respostas e roteamento HTTP
-├── integrations/slack/             # Cliente externo do Incoming Webhook
-├── middleware/                     # CORS, request ID, erros e composição
-├── routes/                         # Adaptadores HTTP finos por operação
-├── services/                       # Orquestração dos casos de uso
-├── types/                          # Contratos compartilhados
-├── utils/                          # Logging estruturado e utilidades transversais
-├── validators/                     # Validação e normalização de entrada
-├── app.ts                          # Composition root testável
-├── index.ts                        # Entrada local e serverless
-└── server.ts                       # Instância padrão do handler
+└── app/                            # Composição, handler e inicialização da aplicação
 
 test/
 └── server.test.mjs                 # Testes HTTP com o runner nativo do Node.js
@@ -141,24 +134,22 @@ test/
 
 Fluxo principal:
 
-1. `index.ts` exporta o handler e, fora de produção, cria o servidor local;
-2. `app.ts` monta dependências, rotas e a cadeia de middlewares sem executar I/O;
-3. os middlewares tratam erro, request ID e CORS antes do roteador;
-4. a rota lê o JSON e delega sua validação ao contrato da operação;
-5. o serviço orquestra o envio sem conhecer HTTP, CORS ou detalhes do Slack;
-6. o cliente Slack executa a chamada externa com timeout e converte falhas em `502`;
-7. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
+1. `app/index.ts` exporta o handler e, fora de produção, cria o servidor local;
+2. `app/create-app.ts` monta o cliente Slack, a única rota e os middlewares sem executar I/O;
+3. os middlewares tratam erro, request ID e CORS antes do handler da rota;
+4. o handler da rota lê e valida o JSON e delega o envio ao cliente Slack;
+5. o cliente Slack monta o payload, executa a chamada externa com timeout e converte falhas em `502`;
+6. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
 
 ### Onde colocar mudanças
 
-- middlewares leves e transversais: `src/middleware/`;
-- orquestração e regras da operação: `src/services/`;
+- middlewares leves e transversais: `src/middlewares/`;
 - validação e normalização de contratos: `src/validators/`;
-- integrações e chamadas externas: `src/integrations/`;
-- parsing, roteamento e respostas do protocolo: `src/http/`;
+- integrações e chamadas externas: `src/clients/`;
+- definição e resolução da rota: `src/app/create-app.ts`;
+- parsing, respostas, erros e tipos compartilhados: `src/utils/`;
 - configuração tipada: `src/config/` e `.env.example`;
-- contratos compartilhados: `src/types/`;
-- montagem de dependências e rotas: `src/app.ts`.
+- montagem de dependências e inicialização: `src/app/`.
 
 Evite criar uma nova camada ou abstração para um único uso sem uma necessidade concreta. Prefira funções pequenas, tipos próximos do código que os consome e APIs nativas do Node.js quando elas atendem ao requisito sem comprometer legibilidade.
 
@@ -242,7 +233,7 @@ Se o hook de pre-commit formatar um arquivo, revise o resultado, adicione-o nova
 
 ## Deploy
 
-A Vercel usa `src/index.ts` como função Node e define `NODE_ENV=production`. Nesse ambiente, o módulo exporta o handler sem executar `listen()`. Em execução local, o mesmo módulo cria um servidor na porta configurada.
+A Vercel usa `src/app/index.ts` como função Node e define `NODE_ENV=production`. Nesse ambiente, o módulo exporta o handler sem executar `listen()`. Em execução local, o mesmo módulo cria um servidor na porta configurada.
 
 Antes do deploy, confirme:
 

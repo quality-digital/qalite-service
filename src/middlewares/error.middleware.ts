@@ -1,8 +1,8 @@
-import { ExternalServiceError } from '../errors/external-service-error.js'
-import { HttpError } from '../errors/http-error.js'
-import { sendJson } from '../http/response.js'
-import type { Middleware } from '../types/http.js'
+import { ExternalServiceError } from '../utils/external-service-error.js'
+import { HttpError } from '../utils/http-error.js'
+import type { Middleware } from '../utils/http.js'
 import type { Logger } from '../utils/logger.js'
+import { sendJson } from '../utils/response.js'
 
 export const createErrorMiddleware =
   (log: Logger): Middleware =>

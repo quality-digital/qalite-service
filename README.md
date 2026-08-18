@@ -121,18 +121,16 @@ O serviço não persiste o conteúdo recebido e não registra a URL do webhook. 
 
 ```text
 src/
-├── controllers/                    # Entrada e saída da operação HTTP
+├── controllers/                    # Entrada e saída das requisições
+├── services/                       # Orquestração do fluxo de comunicação
+├── clients/                        # Comunicação com APIs e sistemas externos
+├── routes/                         # Rotas expostas e roteador HTTP
+├── middlewares/                    # CORS, request ID, erros e composição
+├── mappers/                        # Transformação de payloads externos
+├── validators/                     # Validações e normalização reutilizáveis
+├── utils/                          # HTTP, erros, tipos e logging compartilhados
 ├── config/                         # Ambiente, defaults e configuração tipada
-├── errors/                         # Erros HTTP operacionais
-├── http/                           # Parser, respostas e roteamento HTTP
-├── integrations/slack/             # Cliente externo do Incoming Webhook
-├── middleware/                     # CORS, request ID, erros e composição
-├── types/                          # Contratos compartilhados
-├── utils/                          # Logging estruturado e utilidades transversais
-├── validators/                     # Validação e normalização de entrada
-├── app.ts                          # Composition root testável
-├── index.ts                        # Entrada local e serverless
-└── server.ts                       # Instância padrão do handler
+└── app/                            # Composição, handler e inicialização da aplicação
 
 test/
 └── server.test.mjs                 # Testes HTTP com o runner nativo do Node.js
@@ -140,23 +138,25 @@ test/
 
 Fluxo principal:
 
-1. `index.ts` exporta o handler e, fora de produção, cria o servidor local;
-2. `app.ts` monta dependências, rotas e a cadeia de middlewares sem executar I/O;
+1. `app/index.ts` exporta o handler e, fora de produção, cria o servidor local;
+2. `app/create-app.ts` monta dependências, serviços, rotas e middlewares sem executar I/O;
 3. os middlewares tratam erro, request ID e CORS antes do roteador;
-4. o controller lê e valida o JSON e delega o envio ao cliente Slack;
-5. o cliente Slack executa a chamada externa com timeout e converte falhas em `502`;
+4. o controller lê e valida o JSON e delega a operação ao serviço;
+5. o serviço orquestra o cliente Slack, que mapeia o payload, executa a chamada externa com timeout e converte falhas em `502`;
 6. o middleware de erro mantém respostas públicas estáveis e registra falhas inesperadas sem payloads ou segredos.
 
 ### Onde colocar mudanças
 
-- middlewares leves e transversais: `src/middleware/`;
+- middlewares leves e transversais: `src/middlewares/`;
 - entrada, validação e resposta da operação: `src/controllers/`;
 - validação e normalização de contratos: `src/validators/`;
-- integrações e chamadas externas: `src/integrations/`;
-- parsing, roteamento e respostas do protocolo: `src/http/`;
+- orquestração de casos de uso: `src/services/`;
+- integrações e chamadas externas: `src/clients/`;
+- definição e resolução de rotas: `src/routes/`;
+- transformação de payloads externos: `src/mappers/`;
+- parsing, respostas, erros e tipos compartilhados: `src/utils/`;
 - configuração tipada: `src/config/` e `.env.example`;
-- contratos compartilhados: `src/types/`;
-- montagem de dependências e rotas: `src/app.ts`.
+- montagem de dependências e inicialização: `src/app/`.
 
 Evite criar uma nova camada ou abstração para um único uso sem uma necessidade concreta. Prefira funções pequenas, tipos próximos do código que os consome e APIs nativas do Node.js quando elas atendem ao requisito sem comprometer legibilidade.
 

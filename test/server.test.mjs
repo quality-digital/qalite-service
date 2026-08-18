@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createServer, request } from 'node:http'
 import { after, before, beforeEach, test } from 'node:test'
 
-import { requestHandler } from '../dist/server.js'
+import { requestHandler } from '../dist/app/server.js'
 
 const originalFetch = globalThis.fetch
 

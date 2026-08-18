@@ -1,4 +1,4 @@
-import type { HttpHandler, Middleware } from '../types/http.js'
+import type { HttpHandler, Middleware } from '../utils/http.js'
 
 export const composeMiddleware = (
   middlewares: readonly Middleware[],

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import type { Middleware } from '../types/http.js'
+import type { Middleware } from '../utils/http.js'
 
 const REQUEST_ID_PATTERN = /^[a-zA-Z0-9._-]{1,128}$/
 

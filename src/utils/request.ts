@@ -1,6 +1,6 @@
 import type { IncomingMessage } from 'node:http'
 
-import { HttpError } from '../errors/http-error.js'
+import { HttpError } from './http-error.js'
 
 const DEFAULT_MAX_BODY_SIZE = 1024 * 1024
 

@@ -1,5 +1,5 @@
-import { HttpError } from '../errors/http-error.js'
-import type { Middleware } from '../types/http.js'
+import { HttpError } from '../utils/http-error.js'
+import type { Middleware } from '../utils/http.js'
 
 export const createCorsMiddleware =
   (allowedOrigins: readonly string[]): Middleware =>
